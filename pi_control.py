@@ -420,10 +420,6 @@ class Frame(wx.Frame):
     def close_app(self, event):
         self.fermentor.system_off()
         sys.exit(0)
-        # LOL @ THIS
-        #output = subprocess.check_output("ps aux | grep %s" % os.path.basename(__file__), shell=True)
-        #to_kill = ' '.join([line.split()[1] for line in output.split("\n")[:-1] if not "charm" in line and "python.app" in line])
-        #os.system("kill %s" % to_kill)
 
 if __name__ == '__main__':
 
@@ -435,5 +431,4 @@ if __name__ == '__main__':
     app = wx.App(redirect=True)
     Frame(app, fermentor).Show()
     app.MainLoop()
-    print "Closed"
     exit()
