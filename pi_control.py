@@ -1,11 +1,23 @@
 #!/usr/bin/env python
 
-import os, sys, subprocess
+import os
+import sys
+import subprocess
+import logging
+import argparse
 import time, serial, wx, threading, thread
 from datetime import datetime
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.font_manager import FontProperties
+
+__version__ = 1.0
+__author__ = "Jonathan Deaton (jdeaton@stanford.edu)"
+__license__ = "No license"
+
+logging.basicConfig(format='[%(asctime)s][%(levelname)s][%(funcName)s] - %(message)s')
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 class Fermentor():
 
@@ -13,6 +25,8 @@ class Fermentor():
 
         self.time_stamp = datetime.utcnow().strftime("%Y-%m-%d-%H%MZ")
         self.plot_dir = "plots_directory"
+        self.ports_to_try = ['/dev/cu.usbmodem1421', '/dev/cu.usbmodem621', '/dev/cu.usbmodem411', '/dev/ttyACM0',
+                             '/dev/ttyACM1', '/dev/ttyACM2', '/dev/ttyACM3', 'COM1', 'COM2', 'COM3', 'COM4']
 
         # Fermentor State
         self.is_on = False
@@ -35,22 +49,31 @@ class Fermentor():
         self.time_running = 0
 
         # Serial Port Establishment
-        self.ser = serial.Serial(baudrate = 9600, timeout=1)
-        ports = ['/dev/cu.usbmodem1421', '/dev/cu.usbmodem621','/dev/cu.usbmodem411', '/dev/ttyACM0','/dev/ttyACM1','/dev/ttyACM2','/dev/ttyACM3','COM1','COM2','COM3','COM4']
-        for port in ports:
-            try:
-                print "opening serial port on %s ... " % port,
-                sys.stdout.flush()
-                self.ser.port = port
-                self.ser.open()
-                print "success"
-                self.serial_checker()
-                os.system("mkdir %s" % self.plot_dir)
-                break
-            except:
-                print "failed"
+        self.ser = serial.Serial(baudrate=9600, timeout=1)
+        self.try_open_serial_port()
 
     # FERMENTOR CONTROL
+
+    def try_open_serial_port(self, port=None):
+        """
+        This function tries to open a connection w
+        :return:
+        """
+        if port is None:
+            for port in self.ports_to_try:
+                try:
+                    self.try_open_serial_port(port=port)
+                    return
+                except:
+                    pass
+        else:
+            logger.info("Opening serial port on %s ... " % port)
+            self.ser.port = port
+            self.ser.open()
+            logger.info("Success opening serial port")
+            self.serial_checker()
+            os.mkdir(self.plot_dir)
+
 
     def fan_on(self, *args):
         self.send_instruction("fan on")
@@ -418,16 +441,22 @@ class Frame(wx.Frame):
         plt.show()
 
     def close_app(self, event):
+        logger.info("Turning fermentor off...")
         self.fermentor.system_off()
+        logger.info("Closing app...")
         sys.exit(0)
 
 if __name__ == '__main__':
 
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-fake", "--fake_data", action='store_true', help="Display fake data")
+    args = parser.parse_args()
+
     fermentor = Fermentor()
+    fermentor.fake_data = args.fake_data
 
-    print "Opening GUI... ",
-    sys.stdout.flush()
 
+    logger.info("Opening GUI... ")
     app = wx.App(redirect=True)
     Frame(app, fermentor).Show()
     app.MainLoop()
